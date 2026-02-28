@@ -4,7 +4,7 @@ Adds a **Quick add** button under videos on:
 - YouTube Home (`/`)
 - Subscriptions (`/feed/subscriptions`)
 
-<img width="1119" height="837" alt="image" src="https://github.com/user-attachments/assets/6afbf21d-2828-4909-a091-38e76f31d957" />
+<img width="560" height="418" alt="image" src="https://github.com/user-attachments/assets/6afbf21d-2828-4909-a091-38e76f31d957" />
 
 Clicking Quick add opens your configured favorite playlists in your manual order from options. Clicking a playlist immediately adds that video to the real YouTube playlist, then the button turns into **Undo** (until reload) so you can revert quickly.
 
