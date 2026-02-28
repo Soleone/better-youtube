@@ -45,7 +45,7 @@ async function persist(message) {
   setStatus(message);
 }
 
-function onSubmit(event) {
+async function onSubmit(event) {
   event.preventDefault();
 
   const rawInput = playlistInput.value.trim();
@@ -76,7 +76,7 @@ function onSubmit(event) {
     setPinned(playlistId);
   }
 
-  persist("Playlist saved.");
+  await persist("Playlist saved.");
   form.reset();
 }
 
@@ -118,17 +118,18 @@ function setPinned(id) {
 }
 
 function sortedPlaylists() {
-  return [...playlists].sort((a, b) => {
-    if (a.pinned && !b.pinned) {
-      return -1;
-    }
+  return [...playlists];
+}
 
-    if (!a.pinned && b.pinned) {
-      return 1;
-    }
+function movePlaylist(index, direction) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= playlists.length) {
+    return false;
+  }
 
-    return a.title.localeCompare(b.title);
-  });
+  const [item] = playlists.splice(index, 1);
+  playlists.splice(targetIndex, 0, item);
+  return true;
 }
 
 function render() {
@@ -143,7 +144,7 @@ function render() {
     return;
   }
 
-  items.forEach((playlist) => {
+  items.forEach((playlist, index) => {
     const row = document.createElement("li");
     row.className = `playlist-row ${playlist.pinned ? "pinned" : ""}`;
 
@@ -165,6 +166,30 @@ function render() {
     const actions = document.createElement("div");
     actions.className = "row-actions";
 
+    const moveUpButton = document.createElement("button");
+    moveUpButton.type = "button";
+    moveUpButton.textContent = "↑";
+    moveUpButton.disabled = index === 0;
+    moveUpButton.addEventListener("click", async () => {
+      if (!movePlaylist(index, -1)) {
+        return;
+      }
+
+      await persist("Playlist order updated.");
+    });
+
+    const moveDownButton = document.createElement("button");
+    moveDownButton.type = "button";
+    moveDownButton.textContent = "↓";
+    moveDownButton.disabled = index === items.length - 1;
+    moveDownButton.addEventListener("click", async () => {
+      if (!movePlaylist(index, 1)) {
+        return;
+      }
+
+      await persist("Playlist order updated.");
+    });
+
     const pinButton = document.createElement("button");
     pinButton.type = "button";
     pinButton.textContent = playlist.pinned ? "Pinned" : "Pin";
@@ -182,6 +207,8 @@ function render() {
       await persist("Playlist removed.");
     });
 
+    actions.appendChild(moveUpButton);
+    actions.appendChild(moveDownButton);
     actions.appendChild(pinButton);
     actions.appendChild(removeButton);
 

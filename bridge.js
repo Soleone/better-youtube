@@ -7,7 +7,23 @@
 
   const CONTENT_SOURCE = "YTQF_CONTENT";
   const PAGE_SOURCE = "YTQF_BRIDGE";
+
   const EDIT_ENDPOINTS = ["/youtubei/v1/browse/edit_playlist"];
+
+  const REQUEST_TYPES = {
+    add: "YTQF_ADD_TO_PLAYLIST",
+    remove: "YTQF_REMOVE_FROM_PLAYLIST",
+  };
+
+  const RESPONSE_TYPES = {
+    [REQUEST_TYPES.add]: "YTQF_ADD_RESULT",
+    [REQUEST_TYPES.remove]: "YTQF_REMOVE_RESULT",
+  };
+
+  const REMOVE_ACTION_VARIANTS = [
+    [{ action: "ACTION_REMOVE_VIDEO_BY_VIDEO_ID", removedVideoId: "{videoId}" }],
+    [{ action: "ACTION_REMOVE_VIDEO", removedVideoId: "{videoId}" }],
+  ];
 
   function getRuntimeConfig() {
     const ytcfgObj = window.ytcfg;
@@ -47,13 +63,13 @@
     }
 
     const timestamp = Math.floor(Date.now() / 1000);
-    const input = String(timestamp) + " " + sapisid + " https://www.youtube.com";
+    const input = `${timestamp} ${sapisid} https://www.youtube.com`;
     const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(input));
     const hash = Array.from(new Uint8Array(digest))
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
 
-    return "SAPISIDHASH " + timestamp + "_" + hash;
+    return `SAPISIDHASH ${timestamp}_${hash}`;
   }
 
   async function buildHeaders(config) {
@@ -79,45 +95,6 @@
     return headers;
   }
 
-  function parseEditResult(payload) {
-    const statuses = [];
-    let hasAddedResult = false;
-    let hasAlreadyInPlaylistResult = false;
-
-    if (typeof payload?.status === "string") {
-      statuses.push(payload.status);
-    }
-
-    if (Array.isArray(payload?.playlistEditResults)) {
-      payload.playlistEditResults.forEach((item) => {
-        if (typeof item?.status === "string") {
-          statuses.push(item.status);
-        }
-
-        if (item?.playlistEditVideoAddedResultData) {
-          hasAddedResult = true;
-          statuses.push("STATUS_SUCCEEDED");
-        }
-
-        if (item?.playlistEditVideoAlreadyInPlaylistResultData) {
-          hasAlreadyInPlaylistResult = true;
-          statuses.push("VIDEO_ALREADY_IN_PLAYLIST");
-        }
-      });
-    }
-
-    return {
-      statuses: statuses.filter((status) => typeof status === "string"),
-      hasAddedResult,
-      hasAlreadyInPlaylistResult,
-      hasPlaylistEditResults: Array.isArray(payload?.playlistEditResults),
-    };
-  }
-
-  function isSuccessStatus(status) {
-    return status === "STATUS_SUCCEEDED" || status === "VIDEO_ALREADY_IN_PLAYLIST";
-  }
-
   function buildRequestContext(config) {
     const baseContext = config.context || {};
     const user = { ...(baseContext.user || {}) };
@@ -132,13 +109,9 @@
     };
   }
 
-  async function sendEditRequest(config, endpointPath, videoId, playlistId) {
+  async function sendEditRequest(config, endpointPath, playlistId, actions) {
     const url =
-      "https://www.youtube.com" +
-      endpointPath +
-      "?key=" +
-      encodeURIComponent(config.apiKey) +
-      "&prettyPrint=false";
+      "https://www.youtube.com" + endpointPath + "?key=" + encodeURIComponent(config.apiKey) + "&prettyPrint=false";
 
     const response = await fetch(url, {
       method: "POST",
@@ -147,7 +120,7 @@
       body: JSON.stringify({
         context: buildRequestContext(config),
         playlistId,
-        actions: [{ action: "ACTION_ADD_VIDEO", addedVideoId: videoId }],
+        actions,
       }),
     });
 
@@ -161,121 +134,215 @@
     return { response, payload };
   }
 
-  async function addToPlaylist(videoId, inputPlaylistId) {
-    const config = getRuntimeConfig();
-    const attempts = [];
+  function parseEditResult(payload) {
+    const statuses = [];
+    let hasAlreadyInPlaylistResult = false;
 
-    const playlistIds = [inputPlaylistId];
-
-    if (inputPlaylistId.startsWith("VL") && inputPlaylistId.length > 2) {
-      playlistIds.push(inputPlaylistId.slice(2));
-    } else {
-      playlistIds.push("VL" + inputPlaylistId);
+    if (typeof payload?.status === "string") {
+      statuses.push(payload.status);
     }
 
-    for (const playlistId of playlistIds) {
+    if (Array.isArray(payload?.playlistEditResults)) {
+      payload.playlistEditResults.forEach((item) => {
+        if (typeof item?.status === "string") {
+          statuses.push(item.status);
+        }
+
+        if (item?.playlistEditVideoAddedResultData) {
+          statuses.push("STATUS_SUCCEEDED");
+        }
+
+        if (item?.playlistEditVideoAlreadyInPlaylistResultData) {
+          hasAlreadyInPlaylistResult = true;
+          statuses.push("VIDEO_ALREADY_IN_PLAYLIST");
+        }
+      });
+    }
+
+    return {
+      statuses,
+      hasAlreadyInPlaylistResult,
+      hasPlaylistEditResults: Array.isArray(payload?.playlistEditResults),
+    };
+  }
+
+  function buildPlaylistIds(inputPlaylistId) {
+    const ids = [inputPlaylistId];
+
+    if (inputPlaylistId.startsWith("VL") && inputPlaylistId.length > 2) {
+      ids.push(inputPlaylistId.slice(2));
+    } else {
+      ids.push("VL" + inputPlaylistId);
+    }
+
+    return ids;
+  }
+
+  function renderActions(templateActions, videoId) {
+    return templateActions.map((action) => {
+      const mapped = { ...action };
+
+      if (mapped.addedVideoId === "{videoId}") {
+        mapped.addedVideoId = videoId;
+      }
+
+      if (mapped.removedVideoId === "{videoId}") {
+        mapped.removedVideoId = videoId;
+      }
+
+      return mapped;
+    });
+  }
+
+  function formatAttempt(endpointPath, playlistId, detail) {
+    return `${endpointPath}(${playlistId}): ${detail}`;
+  }
+
+  function getHttpError(response, payload) {
+    if (response.ok && !(payload && payload.error)) {
+      return null;
+    }
+
+    return payload?.error?.message || `HTTP ${response.status}`;
+  }
+
+  async function runEditAttempts({
+    videoId,
+    inputPlaylistId,
+    actionVariants,
+    isStatusSuccess,
+    mapSuccess,
+    failurePrefix,
+    failureHint,
+  }) {
+    const config = getRuntimeConfig();
+    const failureReasons = [];
+
+    for (const playlistId of buildPlaylistIds(inputPlaylistId)) {
       for (const endpointPath of EDIT_ENDPOINTS) {
-        let result;
+        for (const templateActions of actionVariants) {
+          let result;
 
-        try {
-          result = await sendEditRequest(config, endpointPath, videoId, playlistId);
-        } catch (error) {
-          attempts.push(endpointPath + "(" + playlistId + "): network " + (error?.message || "unknown"));
-          continue;
+          try {
+            result = await sendEditRequest(config, endpointPath, playlistId, renderActions(templateActions, videoId));
+          } catch (error) {
+            failureReasons.push(formatAttempt(endpointPath, playlistId, `network ${error?.message || "unknown"}`));
+            continue;
+          }
+
+          const httpError = getHttpError(result.response, result.payload);
+          if (httpError) {
+            failureReasons.push(formatAttempt(endpointPath, playlistId, httpError));
+            continue;
+          }
+
+          const editResult = parseEditResult(result.payload);
+          if (editResult.statuses.length === 0 && !editResult.hasPlaylistEditResults) {
+            const payloadKeys = result.payload ? Object.keys(result.payload).slice(0, 8).join(",") : "no-payload";
+            failureReasons.push(formatAttempt(endpointPath, playlistId, `no-playlistEditResults [${payloadKeys}]`));
+            continue;
+          }
+
+          const failedStatus = editResult.statuses.find((status) => !isStatusSuccess(status));
+          if (failedStatus) {
+            failureReasons.push(formatAttempt(endpointPath, playlistId, failedStatus));
+            continue;
+          }
+
+          return mapSuccess({
+            endpointPath,
+            playlistId,
+            statuses: editResult.statuses,
+            editResult,
+          });
         }
-
-        const response = result.response;
-        const payload = result.payload;
-
-        if (!response.ok || (payload && payload.error)) {
-          const message = payload?.error?.message || "HTTP " + response.status;
-          attempts.push(endpointPath + "(" + playlistId + "): " + message);
-          continue;
-        }
-
-        const editResult = parseEditResult(payload);
-        const statuses = editResult.statuses;
-
-        if (statuses.length === 0 && !editResult.hasPlaylistEditResults) {
-          const payloadKeys = payload ? Object.keys(payload).slice(0, 8).join(",") : "no-payload";
-          attempts.push(endpointPath + "(" + playlistId + "): no-playlistEditResults [" + payloadKeys + "]");
-          continue;
-        }
-
-        const failed = statuses.find((status) => !isSuccessStatus(status));
-        if (failed) {
-          attempts.push(endpointPath + "(" + playlistId + "): " + failed);
-          continue;
-        }
-
-        const already = editResult.hasAlreadyInPlaylistResult || statuses.includes("VIDEO_ALREADY_IN_PLAYLIST");
-
-        return {
-          message: already ? "Already in playlist" : "Added",
-          statuses,
-          endpoint: endpointPath,
-          playlistId,
-        };
       }
     }
 
-    throw new Error(
-      "YouTube rejected add action: " +
-        attempts.join(" | ") +
-        " (check playlist ownership/channel and that manual Save works for this playlist)"
+    throw new Error(`${failurePrefix}: ${failureReasons.join(" | ")} ${failureHint}`);
+  }
+
+  async function addToPlaylist(videoId, playlistId) {
+    return runEditAttempts({
+      videoId,
+      inputPlaylistId: playlistId,
+      actionVariants: [[{ action: "ACTION_ADD_VIDEO", addedVideoId: "{videoId}" }]],
+      isStatusSuccess: (status) => status === "STATUS_SUCCEEDED" || status === "VIDEO_ALREADY_IN_PLAYLIST",
+      mapSuccess: ({ endpointPath, playlistId: resolvedPlaylistId, statuses, editResult }) => ({
+        message: editResult.hasAlreadyInPlaylistResult || statuses.includes("VIDEO_ALREADY_IN_PLAYLIST") ? "Already in playlist" : "Added",
+        statuses,
+        endpoint: endpointPath,
+        playlistId: resolvedPlaylistId,
+      }),
+      failurePrefix: "YouTube rejected add action",
+      failureHint: "(check playlist ownership/channel and that manual Save works for this playlist)",
+    });
+  }
+
+  async function removeFromPlaylist(videoId, playlistId) {
+    return runEditAttempts({
+      videoId,
+      inputPlaylistId: playlistId,
+      actionVariants: REMOVE_ACTION_VARIANTS,
+      isStatusSuccess: (status) => status === "STATUS_SUCCEEDED",
+      mapSuccess: ({ endpointPath, playlistId: resolvedPlaylistId, statuses }) => ({
+        message: "Removed",
+        statuses,
+        endpoint: endpointPath,
+        playlistId: resolvedPlaylistId,
+      }),
+      failurePrefix: "YouTube rejected remove action",
+      failureHint: "(if this repeats, YouTube may require video-specific set IDs for removal)",
+    });
+  }
+
+  async function handleMessage(requestType, videoId, playlistId) {
+    if (requestType === REQUEST_TYPES.add) {
+      return addToPlaylist(videoId, playlistId);
+    }
+
+    return removeFromPlaylist(videoId, playlistId);
+  }
+
+  function postBridgeResponse(type, requestId, ok, detailOrError) {
+    window.postMessage(
+      {
+        source: PAGE_SOURCE,
+        type,
+        requestId,
+        ok,
+        ...(ok ? { detail: detailOrError } : { error: detailOrError }),
+      },
+      "*"
     );
   }
 
   window.addEventListener("message", async (event) => {
-    if (event.source !== window || !event.data || event.data.source !== CONTENT_SOURCE) {
+    const { data, source } = event;
+    if (source !== window || !data || data.source !== CONTENT_SOURCE) {
       return;
     }
 
-    if (event.data.type !== "YTQF_ADD_TO_PLAYLIST") {
+    const requestType = data.type;
+    if (requestType !== REQUEST_TYPES.add && requestType !== REQUEST_TYPES.remove) {
       return;
     }
 
-    const requestId = event.data.requestId;
-    const videoId = event.data.payload?.videoId;
-    const playlistId = event.data.payload?.playlistId;
+    const responseType = RESPONSE_TYPES[requestType];
+    const requestId = data.requestId;
+    const videoId = data.payload?.videoId;
+    const playlistId = data.payload?.playlistId;
 
     if (!requestId || !videoId || !playlistId) {
-      window.postMessage(
-        {
-          source: PAGE_SOURCE,
-          type: "YTQF_ADD_RESULT",
-          requestId,
-          ok: false,
-          error: "Missing request payload.",
-        },
-        "*"
-      );
+      postBridgeResponse(responseType, requestId, false, "Missing request payload.");
       return;
     }
 
     try {
-      const detail = await addToPlaylist(videoId, playlistId);
-      window.postMessage(
-        {
-          source: PAGE_SOURCE,
-          type: "YTQF_ADD_RESULT",
-          requestId,
-          ok: true,
-          detail,
-        },
-        "*"
-      );
+      const detail = await handleMessage(requestType, videoId, playlistId);
+      postBridgeResponse(responseType, requestId, true, detail);
     } catch (error) {
-      window.postMessage(
-        {
-          source: PAGE_SOURCE,
-          type: "YTQF_ADD_RESULT",
-          requestId,
-          ok: false,
-          error: error?.message || "Unknown failure",
-        },
-        "*"
-      );
+      postBridgeResponse(responseType, requestId, false, error?.message || "Unknown failure");
     }
   });
 })();

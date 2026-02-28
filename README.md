@@ -4,7 +4,7 @@ Adds a **Quick add** button under videos on:
 - YouTube Home (`/`)
 - Subscriptions (`/feed/subscriptions`)
 
-Clicking Quick add opens your configured favorite playlists (with one pinned at top). Clicking a playlist immediately adds that video to the real YouTube playlist.
+Clicking Quick add opens your configured favorite playlists in your manual order from options. Clicking a playlist immediately adds that video to the real YouTube playlist, then the button turns into **Undo** (until reload) so you can revert quickly.
 
 ## Install (unpacked)
 
@@ -18,7 +18,7 @@ Clicking Quick add opens your configured favorite playlists (with one pinned at 
 1. Open the extension details page.
 2. Click **Extension options**.
 3. Paste playlist URL or playlist ID.
-4. Optionally set a custom label and mark one as pinned.
+4. Optionally set a custom label, mark one as pinned (★ badge), and reorder with ↑/↓.
 
 ## Notes
 
