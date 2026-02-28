@@ -1,0 +1,94 @@
+.ytqf-container {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.ytqf-trigger {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-radius: 9999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ytqf-trigger:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.ytqf-panel {
+  position: fixed;
+  z-index: 999999;
+  min-width: 260px;
+  max-width: 360px;
+  background: #212121;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  padding: 8px;
+}
+
+.ytqf-panel-title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 4px 6px 6px;
+}
+
+.ytqf-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ytqf-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.ytqf-item-pin {
+  color: #ffd54f;
+  font-size: 12px;
+}
+
+.ytqf-empty {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  padding: 6px;
+}
+
+.ytqf-link {
+  margin-top: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #3ea6ff;
+  color: #0f0f0f;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ytqf-feedback {
+  margin-left: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ytqf-feedback--ok {
+  color: #66bb6a;
+}
+
+.ytqf-feedback--error {
+  color: #ef5350;
+}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Quick Playlist Add - Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>YouTube Quick Playlist Add</h1>
+      <p class="hint">
+        Add the playlists you care about (e.g. 7 out of your 50+), mark one as pinned,
+        and they’ll appear under each video on Home and Subscriptions.
+      </p>
+
+      <section class="card">
+        <h2>Add favorite playlist</h2>
+        <form id="add-form">
+          <label>
+            Playlist URL or ID
+            <input id="playlist-input" required placeholder="https://www.youtube.com/playlist?list=PL..." />
+          </label>
+
+          <label>
+            Label (optional)
+            <input id="title-input" placeholder="My work queue" />
+          </label>
+
+          <label class="checkbox-row">
+            <input id="pinned-input" type="checkbox" />
+            Set as pinned (always shown first)
+          </label>
+
+          <button type="submit">Add playlist</button>
+        </form>
+        <p class="tiny">Tip: open a playlist and copy its URL from the address bar.</p>
+      </section>
+
+      <section class="card">
+        <h2>Favorite playlists</h2>
+        <ul id="playlist-list"></ul>
+      </section>
+
+      <p id="status"></p>
+    </main>
+
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Quick Playlist Add",
+  "version": "0.1.0",
+  "description": "Add videos from YouTube Home/Subscriptions to your favorite playlists in one click.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.youtube.com/*"],
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
