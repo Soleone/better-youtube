@@ -11,6 +11,8 @@ const CARD_SELECTOR = [
   "ytd-rich-grid-media",
   "ytd-video-renderer",
   "ytd-grid-video-renderer",
+  "ytd-compact-video-renderer",
+  "yt-lockup-view-model.yt-lockup-view-model--wrapper",
 ].join(", ");
 
 const PLAYLIST_ROW_SELECTOR = "ytd-playlist-video-renderer";
@@ -128,7 +130,7 @@ function scheduleScan() {
 }
 
 function isQuickAddPage() {
-  return location.pathname === "/" || location.pathname === "/feed/subscriptions";
+  return ["/", "/feed/subscriptions", "/watch"].includes(location.pathname);
 }
 
 function isPlaylistPage() {
@@ -145,6 +147,11 @@ function injectQuickAddButtons() {
     }
 
     processedCards.add(card);
+
+    const injectedAncestor = card.parentElement?.closest("[data-ytqf-injected='1']");
+    if (injectedAncestor) {
+      return;
+    }
 
     if (card.dataset.ytqfInjected === "1" && card.querySelector(".ytqf-container")) {
       return;
@@ -175,7 +182,8 @@ function resolveCardRoot(candidate) {
 function resolvePlacement(card) {
   const inlineHost = findInlineHost(card);
   if (inlineHost) {
-    return { mode: "inline", host: inlineHost };
+    const mode = card.matches("yt-lockup-view-model.yt-lockup-view-model--wrapper") ? "inline-static" : "inline";
+    return { mode, host: inlineHost };
   }
 
   const overlayHost = card.querySelector("#dismissible") || card;
@@ -185,6 +193,14 @@ function resolvePlacement(card) {
 }
 
 function findInlineHost(card) {
+  if (card.matches("ytd-compact-video-renderer")) {
+    return card.querySelector("#details") || null;
+  }
+
+  if (card.matches("yt-lockup-view-model.yt-lockup-view-model--wrapper")) {
+    return card.querySelector(".yt-lockup-metadata-view-model__text-container") || null;
+  }
+
   return (
     card.querySelector("#meta") ||
     card.querySelector("#metadata") ||
@@ -201,6 +217,9 @@ function injectQuickAddTrigger(card, placement, videoId) {
   if (placement.mode === "inline") {
     placement.host.classList.add("ytqf-inline-host");
     container.classList.add("ytqf-container--inline-right");
+  } else if (placement.mode === "inline-static") {
+    placement.host.classList.add("ytqf-lockup-inline-host");
+    container.classList.add("ytqf-container--lockup-inline");
   } else {
     placement.host.classList.add("ytqf-card-host");
     container.classList.add("ytqf-container--overlay-right");

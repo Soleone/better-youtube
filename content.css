@@ -23,6 +23,16 @@
   z-index: 1;
 }
 
+ytd-compact-video-renderer #details.ytqf-inline-host {
+  overflow: visible !important;
+  padding-right: 84px;
+}
+
+ytd-compact-video-renderer #details .ytqf-container--inline-right {
+  right: 0;
+  top: 1px;
+}
+
 .ytqf-container--overlay-right {
   position: absolute;
   right: 20px;
@@ -34,6 +44,14 @@
 .ytqf-playlist-remove-container {
   margin-top: 0;
   margin-right: 8px;
+}
+
+.ytqf-lockup-inline-host {
+  padding-right: 0;
+}
+
+.ytqf-container--lockup-inline {
+  margin-top: 6px;
 }
 
 .ytqf-trigger {
