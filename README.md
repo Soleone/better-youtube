@@ -1,12 +1,14 @@
 # YouTube Quick Playlist Add (Chrome/Brave extension)
 
-Adds a **Quick add** button under videos on:
-- YouTube Home (`/`)
-- Subscriptions (`/feed/subscriptions`)
+Adds buttons on YouTube pages:
+- **Quick add** on Home (`/`) and Subscriptions (`/feed/subscriptions`)
+- **Remove** on playlist pages (`/playlist?list=...`) for each video row
 
 <img width="560" height="418" alt="image" src="https://github.com/user-attachments/assets/6afbf21d-2828-4909-a091-38e76f31d957" />
 
 Clicking Quick add opens your configured favorite playlists in your manual order from options. Clicking a playlist immediately adds that video to the real YouTube playlist, then the button turns into **Undo** (until reload) so you can revert quickly.
+
+On playlist pages, each row gets a **Remove** button. Remove is immediate, then turns into **Undo** (until reload) to restore the video to that playlist.
 
 ## Install (unpacked)
 

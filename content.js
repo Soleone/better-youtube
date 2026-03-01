@@ -3,13 +3,17 @@ const CONTENT_SOURCE = "YTQF_CONTENT";
 const PAGE_SOURCE = "YTQF_BRIDGE";
 
 const REQUEST_TIMEOUT_MS = 10_000;
+
 const DEFAULT_TRIGGER_LABEL = "Quick add";
+
 const CARD_SELECTOR = [
   "ytd-rich-item-renderer",
   "ytd-rich-grid-media",
   "ytd-video-renderer",
   "ytd-grid-video-renderer",
 ].join(", ");
+
+const PLAYLIST_ROW_SELECTOR = "ytd-playlist-video-renderer";
 
 const REQUEST_TYPES = {
   add: "YTQF_ADD_TO_PLAYLIST",
@@ -26,12 +30,16 @@ const TRIGGER_LABELS = {
   undone: "Undone ✓",
   failed: "Failed",
   undoFailed: "Undo failed",
+  remove: "Remove",
+  removing: "Removing…",
+  restoring: "Restoring…",
+  restored: "Restored ✓",
 };
 
 const TRIGGER_RESET_MS = {
   already: 1800,
   failed: 2200,
-  undone: 1200,
+  success: 1200,
   undoFailed: 2200,
 };
 
@@ -109,19 +117,25 @@ function scheduleScan() {
   requestAnimationFrame(() => {
     scanQueued = false;
 
-    if (!isTargetPage()) {
-      return;
+    if (isQuickAddPage()) {
+      injectQuickAddButtons();
     }
 
-    injectButtons();
+    if (isPlaylistPage()) {
+      injectPlaylistRemoveButtons();
+    }
   });
 }
 
-function isTargetPage() {
+function isQuickAddPage() {
   return location.pathname === "/" || location.pathname === "/feed/subscriptions";
 }
 
-function injectButtons() {
+function isPlaylistPage() {
+  return location.pathname === "/playlist";
+}
+
+function injectQuickAddButtons() {
   const processedCards = new Set();
 
   document.querySelectorAll(CARD_SELECTOR).forEach((candidate) => {
@@ -146,7 +160,7 @@ function injectButtons() {
       return;
     }
 
-    injectTrigger(card, placement, videoId);
+    injectQuickAddTrigger(card, placement, videoId);
   });
 }
 
@@ -166,6 +180,7 @@ function resolvePlacement(card) {
 
   const overlayHost = card.querySelector("#dismissible") || card;
   const reserveHost = card.querySelector("#details") || card.querySelector("#meta") || card.querySelector("#metadata");
+
   return { mode: "overlay", host: overlayHost, reserveHost };
 }
 
@@ -179,7 +194,7 @@ function findInlineHost(card) {
   );
 }
 
-function injectTrigger(card, placement, videoId) {
+function injectQuickAddTrigger(card, placement, videoId) {
   const container = document.createElement("div");
   container.className = "ytqf-container";
 
@@ -192,37 +207,172 @@ function injectTrigger(card, placement, videoId) {
     placement.reserveHost?.classList.add("ytqf-inline-host");
   }
 
-  const trigger = createTrigger(videoId);
+  const trigger = createQuickAddTrigger(videoId);
   container.appendChild(trigger);
   placement.host.appendChild(container);
 
   card.dataset.ytqfInjected = "1";
 }
 
-function createTrigger(videoId) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "ytqf-trigger";
-  setTriggerState(button, { label: DEFAULT_TRIGGER_LABEL });
+function createQuickAddTrigger(videoId) {
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "ytqf-trigger";
+  setTriggerState(trigger, { label: DEFAULT_TRIGGER_LABEL });
 
-  button.addEventListener("click", (event) => {
+  trigger.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
 
-    const undoAction = undoActionsByTrigger.get(button);
+    const undoAction = undoActionsByTrigger.get(trigger);
     if (undoAction) {
-      runUndo(button, undoAction);
+      runUndoAction(trigger, undoAction);
       return;
     }
 
-    openPlaylistPanel(button, videoId);
+    openPlaylistPanel(trigger, videoId);
   });
 
-  return button;
+  return trigger;
 }
 
-function getVideoId(card) {
-  const link = card.querySelector(
+function injectPlaylistRemoveButtons() {
+  const playlistId = getCurrentPlaylistId();
+  if (!playlistId) {
+    return;
+  }
+
+  document.querySelectorAll(PLAYLIST_ROW_SELECTOR).forEach((row) => {
+    if (row.dataset.ytqfRemoveInjected === "1" && row.querySelector(".ytqf-playlist-remove-container")) {
+      return;
+    }
+
+    const videoId = getVideoId(row);
+    if (!videoId) {
+      return;
+    }
+
+    const host = findPlaylistRemoveHost(row);
+    if (!host) {
+      return;
+    }
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "ytqf-trigger";
+    setTriggerState(trigger, { label: TRIGGER_LABELS.remove, variant: "remove" });
+
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const undoAction = undoActionsByTrigger.get(trigger);
+      if (undoAction) {
+        runUndoAction(trigger, undoAction);
+        return;
+      }
+
+      removeFromPlaylistRow(trigger, videoId, playlistId);
+    });
+
+    const container = document.createElement("div");
+    container.className = "ytqf-container ytqf-playlist-remove-container";
+    container.appendChild(trigger);
+
+    host.prepend(container);
+    row.dataset.ytqfRemoveInjected = "1";
+  });
+}
+
+function findPlaylistRemoveHost(row) {
+  return (
+    row.querySelector("#menu #top-level-buttons-computed") ||
+    row.querySelector("#menu") ||
+    row.querySelector("#menu-container") ||
+    row.querySelector("ytd-menu-renderer") ||
+    null
+  );
+}
+
+function getCurrentPlaylistId() {
+  try {
+    const url = new URL(location.href);
+    return url.searchParams.get("list");
+  } catch {
+    return null;
+  }
+}
+
+async function removeFromPlaylistRow(trigger, videoId, playlistId) {
+  setTriggerState(trigger, {
+    label: TRIGGER_LABELS.removing,
+    disabled: true,
+    variant: "loading",
+  });
+
+  try {
+    await removeVideoFromPlaylist(videoId, playlistId);
+
+    setUndoAction(trigger, {
+      type: REQUEST_TYPES.add,
+      videoId,
+      playlistId,
+      pendingLabel: TRIGGER_LABELS.restoring,
+      successLabel: TRIGGER_LABELS.restored,
+      resetLabel: TRIGGER_LABELS.remove,
+      resetVariant: "remove",
+    });
+
+    setTriggerState(trigger, { label: TRIGGER_LABELS.undo, variant: "undo" });
+  } catch (error) {
+    console.error("[YTQF] remove failed", error);
+    setTriggerState(trigger, { label: TRIGGER_LABELS.failed, variant: "error" });
+    scheduleTriggerState(trigger, TRIGGER_RESET_MS.failed, {
+      label: TRIGGER_LABELS.remove,
+      variant: "remove",
+    });
+  }
+}
+
+function setUndoAction(trigger, action) {
+  undoActionsByTrigger.set(trigger, action);
+}
+
+async function runUndoAction(trigger, action) {
+  setTriggerState(trigger, {
+    label: action.pendingLabel,
+    disabled: true,
+    variant: "loading",
+  });
+
+  try {
+    if (action.type === REQUEST_TYPES.add) {
+      await addVideoToPlaylist(action.videoId, action.playlistId);
+    } else {
+      await removeVideoFromPlaylist(action.videoId, action.playlistId);
+    }
+
+    undoActionsByTrigger.delete(trigger);
+    setTriggerState(trigger, { label: action.successLabel, variant: "success" });
+
+    scheduleTriggerState(trigger, TRIGGER_RESET_MS.success, {
+      label: action.resetLabel,
+      variant: action.resetVariant,
+    });
+  } catch (error) {
+    console.error("[YTQF] undo failed", error);
+    setTriggerState(trigger, { label: TRIGGER_LABELS.undoFailed, variant: "error" });
+
+    scheduleTriggerState(trigger, TRIGGER_RESET_MS.undoFailed, {
+      label: TRIGGER_LABELS.undo,
+      variant: "undo",
+      clearUndo: false,
+    });
+  }
+}
+
+function getVideoId(scope) {
+  const link = scope.querySelector(
     "a#thumbnail[href*='/watch'], a#video-title-link[href*='/watch'], a#video-title[href*='/watch'], a[href*='/watch?v=']"
   );
 
@@ -264,9 +414,7 @@ function openPlaylistPanel(anchor, videoId) {
 
   document.body.appendChild(panel);
   positionPanel(panel, anchor);
-
-  const close = bindPanelCloseHandlers(panel, anchor);
-  activePanelClose = close;
+  activePanelClose = bindPanelCloseHandlers(panel, anchor);
 }
 
 function buildPanel() {
@@ -331,7 +479,15 @@ function createPlaylistItem(panel, anchor, videoId, playlist) {
         setTriggerState(anchor, { label: TRIGGER_LABELS.already, variant: "success" });
         scheduleTriggerState(anchor, TRIGGER_RESET_MS.already, { label: DEFAULT_TRIGGER_LABEL });
       } else {
-        undoActionsByTrigger.set(anchor, { videoId, playlistId: playlist.id });
+        setUndoAction(anchor, {
+          type: REQUEST_TYPES.remove,
+          videoId,
+          playlistId: playlist.id,
+          pendingLabel: TRIGGER_LABELS.undoing,
+          successLabel: TRIGGER_LABELS.undone,
+          resetLabel: DEFAULT_TRIGGER_LABEL,
+        });
+
         setTriggerState(anchor, { label: TRIGGER_LABELS.undo, variant: "undo" });
       }
     } catch (error) {
@@ -397,30 +553,6 @@ function closeActivePanel() {
   }
 }
 
-async function runUndo(trigger, undoAction) {
-  setTriggerState(trigger, {
-    label: TRIGGER_LABELS.undoing,
-    disabled: true,
-    variant: "loading",
-  });
-
-  try {
-    await removeVideoFromPlaylist(undoAction.videoId, undoAction.playlistId);
-    undoActionsByTrigger.delete(trigger);
-
-    setTriggerState(trigger, { label: TRIGGER_LABELS.undone, variant: "success" });
-    scheduleTriggerState(trigger, TRIGGER_RESET_MS.undone, { label: DEFAULT_TRIGGER_LABEL });
-  } catch (error) {
-    console.error("[YTQF] undo failed", error);
-    setTriggerState(trigger, { label: TRIGGER_LABELS.undoFailed, variant: "error" });
-    scheduleTriggerState(trigger, TRIGGER_RESET_MS.undoFailed, {
-      label: TRIGGER_LABELS.undo,
-      variant: "undo",
-      clearUndo: false,
-    });
-  }
-}
-
 function setTriggerState(trigger, { label, disabled = false, variant = "default" }) {
   clearTriggerReset(trigger);
 
@@ -431,6 +563,7 @@ function setTriggerState(trigger, { label, disabled = false, variant = "default"
   trigger.classList.toggle("ytqf-trigger--success", variant === "success");
   trigger.classList.toggle("ytqf-trigger--error", variant === "error");
   trigger.classList.toggle("ytqf-trigger--undo", variant === "undo");
+  trigger.classList.toggle("ytqf-trigger--remove", variant === "remove");
 }
 
 function scheduleTriggerState(trigger, delay, { label, variant = "default", clearUndo = true }) {
