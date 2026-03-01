@@ -1,4 +1,4 @@
-# YouTube Quick Playlist Add (Chrome/Brave extension)
+# Better Youtube (Chrome/Brave extension)
 
 Adds buttons on YouTube pages:
 - **Quick add** on Home (`/`) and Subscriptions (`/feed/subscriptions`)

@@ -117,8 +117,16 @@
   gap: 8px;
 }
 
+.ytqf-item--default {
+  background: rgba(255, 213, 79, 0.14);
+}
+
 .ytqf-item:hover {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.ytqf-item--default:hover {
+  background: rgba(255, 213, 79, 0.24);
 }
 
 .ytqf-item-pin {

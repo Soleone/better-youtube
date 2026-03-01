@@ -73,7 +73,7 @@ function setupListeners() {
   });
 
   document.addEventListener("yt-navigate-finish", () => {
-    closeActivePanel();
+    closeActivePanel("navigation");
     scheduleScan();
   });
 
@@ -398,72 +398,26 @@ function sortedPlaylists() {
   return [...favoritePlaylists];
 }
 
+function resolveDefaultPlaylist(playlists) {
+  return playlists.find((playlist) => playlist.pinned) || playlists[0] || null;
+}
+
 function openPlaylistPanel(anchor, videoId) {
-  closeActivePanel();
+  closeActivePanel("replaced");
 
   const panel = buildPanel();
   const playlists = sortedPlaylists();
+  const defaultPlaylist = resolveDefaultPlaylist(playlists);
 
-  if (playlists.length === 0) {
-    appendEmptyPanelState(panel);
-  } else {
-    playlists.forEach((playlist) => {
-      panel.appendChild(createPlaylistItem(panel, anchor, videoId, playlist));
-    });
-  }
+  let isSubmitting = false;
+  let hasManualSelection = false;
 
-  document.body.appendChild(panel);
-  positionPanel(panel, anchor);
-  activePanelClose = bindPanelCloseHandlers(panel, anchor);
-}
+  const selectPlaylist = async (playlist, { closePanel = true } = {}) => {
+    if (!playlist || isSubmitting) {
+      return;
+    }
 
-function buildPanel() {
-  const panel = document.createElement("div");
-  panel.className = "ytqf-panel";
-
-  const title = document.createElement("div");
-  title.className = "ytqf-panel-title";
-  title.textContent = "Add to playlist";
-  panel.appendChild(title);
-
-  return panel;
-}
-
-function appendEmptyPanelState(panel) {
-  const empty = document.createElement("div");
-  empty.className = "ytqf-empty";
-  empty.textContent = "No favorite playlists configured yet.";
-  panel.appendChild(empty);
-
-  const openOptions = document.createElement("button");
-  openOptions.type = "button";
-  openOptions.className = "ytqf-link";
-  openOptions.textContent = "Open extension options";
-  openOptions.addEventListener("click", async () => {
-    await chrome.runtime.openOptionsPage();
-    closeActivePanel();
-  });
-
-  panel.appendChild(openOptions);
-}
-
-function createPlaylistItem(panel, anchor, videoId, playlist) {
-  const item = document.createElement("button");
-  item.type = "button";
-  item.className = "ytqf-item";
-
-  if (playlist.pinned) {
-    const pin = document.createElement("span");
-    pin.className = "ytqf-item-pin";
-    pin.textContent = "★";
-    item.appendChild(pin);
-  }
-
-  const label = document.createElement("span");
-  label.textContent = playlist.title;
-  item.appendChild(label);
-
-  item.addEventListener("click", async () => {
+    isSubmitting = true;
     disablePanelButtons(panel);
 
     setTriggerState(anchor, {
@@ -495,8 +449,90 @@ function createPlaylistItem(panel, anchor, videoId, playlist) {
       setTriggerState(anchor, { label: TRIGGER_LABELS.failed, variant: "error" });
       scheduleTriggerState(anchor, TRIGGER_RESET_MS.failed, { label: DEFAULT_TRIGGER_LABEL });
     } finally {
-      closeActivePanel();
+      isSubmitting = false;
+
+      if (closePanel) {
+        closeActivePanel("selected");
+      }
     }
+  };
+
+  if (playlists.length === 0) {
+    appendEmptyPanelState(panel);
+  } else {
+    playlists.forEach((playlist) => {
+      panel.appendChild(
+        createPlaylistItem(playlist, {
+          isDefault: playlist.id === defaultPlaylist?.id,
+          onSelect: () => {
+            hasManualSelection = true;
+            void selectPlaylist(playlist, { closePanel: true });
+          },
+        })
+      );
+    });
+  }
+
+  document.body.appendChild(panel);
+  positionPanel(panel, anchor);
+  activePanelClose = bindPanelCloseHandlers(panel, anchor, (reason) => {
+    const shouldDefaultOnClose = !["selected", "options", "navigation"].includes(reason);
+    if (!shouldDefaultOnClose || hasManualSelection || isSubmitting || !defaultPlaylist) {
+      return;
+    }
+
+    void selectPlaylist(defaultPlaylist, { closePanel: false });
+  });
+}
+
+function buildPanel() {
+  const panel = document.createElement("div");
+  panel.className = "ytqf-panel";
+
+  const title = document.createElement("div");
+  title.className = "ytqf-panel-title";
+  title.textContent = "Add to playlist";
+  panel.appendChild(title);
+
+  return panel;
+}
+
+function appendEmptyPanelState(panel) {
+  const empty = document.createElement("div");
+  empty.className = "ytqf-empty";
+  empty.textContent = "No favorite playlists configured yet.";
+  panel.appendChild(empty);
+
+  const openOptions = document.createElement("button");
+  openOptions.type = "button";
+  openOptions.className = "ytqf-link";
+  openOptions.textContent = "Open extension options";
+  openOptions.addEventListener("click", async () => {
+    await chrome.runtime.openOptionsPage();
+    closeActivePanel("options");
+  });
+
+  panel.appendChild(openOptions);
+}
+
+function createPlaylistItem(playlist, { onSelect, isDefault = false }) {
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = `ytqf-item${isDefault ? " ytqf-item--default" : ""}`;
+
+  if (playlist.pinned) {
+    const pin = document.createElement("span");
+    pin.className = "ytqf-item-pin";
+    pin.textContent = "★";
+    item.appendChild(pin);
+  }
+
+  const label = document.createElement("span");
+  label.textContent = playlist.title;
+  item.appendChild(label);
+
+  item.addEventListener("click", () => {
+    void onSelect();
   });
 
   return item;
@@ -517,20 +553,29 @@ function positionPanel(panel, anchor) {
   panel.style.left = `${Math.max(10, left)}px`;
 }
 
-function bindPanelCloseHandlers(panel, anchor) {
+function bindPanelCloseHandlers(panel, anchor, onClose) {
   const onOutsideClick = (event) => {
     if (panel.contains(event.target) || anchor.contains(event.target)) {
       return;
     }
 
-    closeActivePanel();
+    closeActivePanel("dismiss");
   };
 
-  const close = () => {
+  const onWindowDismiss = () => {
+    closeActivePanel("reposition");
+  };
+
+  const close = (reason = "programmatic") => {
     document.removeEventListener("click", onOutsideClick, true);
-    window.removeEventListener("scroll", close, true);
-    window.removeEventListener("resize", close, true);
+    window.removeEventListener("scroll", onWindowDismiss, true);
+    window.removeEventListener("resize", onWindowDismiss, true);
     panel.remove();
+
+    if (onClose) {
+      onClose(reason);
+      onClose = null;
+    }
 
     if (activePanelClose === close) {
       activePanelClose = null;
@@ -541,15 +586,15 @@ function bindPanelCloseHandlers(panel, anchor) {
     document.addEventListener("click", onOutsideClick, true);
   }, 0);
 
-  window.addEventListener("scroll", close, true);
-  window.addEventListener("resize", close, true);
+  window.addEventListener("scroll", onWindowDismiss, true);
+  window.addEventListener("resize", onWindowDismiss, true);
 
   return close;
 }
 
-function closeActivePanel() {
+function closeActivePanel(reason = "programmatic") {
   if (activePanelClose) {
-    activePanelClose();
+    activePanelClose(reason);
   }
 }
 

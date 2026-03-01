@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "YouTube Quick Playlist Add",
+  "name": "Better Youtube",
   "version": "0.1.0",
   "description": "Add videos from YouTube Home/Subscriptions to your favorite playlists in one click.",
   "permissions": ["storage"],
