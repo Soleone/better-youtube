@@ -3,6 +3,7 @@ const CONTENT_SOURCE = "YTQF_CONTENT";
 const PAGE_SOURCE = "YTQF_BRIDGE";
 
 const REQUEST_TIMEOUT_MS = 10_000;
+const PANEL_HOVER_CLOSE_DELAY_MS = 600;
 
 const DEFAULT_TRIGGER_LABEL = "Quick add";
 
@@ -495,7 +496,7 @@ function openPlaylistPanel(anchor, videoId) {
   document.body.appendChild(panel);
   positionPanel(panel, anchor);
   activePanelClose = bindPanelCloseHandlers(panel, anchor, (reason) => {
-    const shouldDefaultOnClose = !["selected", "options", "navigation"].includes(reason);
+    const shouldDefaultOnClose = reason === "hover-timeout";
     if (!shouldDefaultOnClose || hasManualSelection || isSubmitting || !defaultPlaylist) {
       return;
     }
@@ -573,22 +574,85 @@ function positionPanel(panel, anchor) {
 }
 
 function bindPanelCloseHandlers(panel, anchor, onClose) {
+  let hoverCloseTimer = null;
+  let lastPointer = null;
+
+  const clearHoverCloseTimer = () => {
+    if (hoverCloseTimer) {
+      clearTimeout(hoverCloseTimer);
+      hoverCloseTimer = null;
+    }
+  };
+
+  const pointInElement = (element, point) => {
+    if (!point || !element.isConnected) {
+      return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+    return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+  };
+
+  let isPointerInsideMenu = false;
+
+  const isHoveringMenu = () =>
+    isPointerInsideMenu || pointInElement(panel, lastPointer) || pointInElement(anchor, lastPointer);
+
+  const scheduleHoverClose = () => {
+    clearHoverCloseTimer();
+    hoverCloseTimer = setTimeout(() => {
+      hoverCloseTimer = null;
+
+      if (!isHoveringMenu()) {
+        closeActivePanel("hover-timeout");
+      }
+    }, PANEL_HOVER_CLOSE_DELAY_MS);
+  };
+
+  const syncHoverClose = () => {
+    if (isHoveringMenu()) {
+      clearHoverCloseTimer();
+    } else if (!hoverCloseTimer) {
+      scheduleHoverClose();
+    }
+  };
+
+  const onPointerMove = (event) => {
+    lastPointer = { x: event.clientX, y: event.clientY };
+    syncHoverClose();
+  };
+
+  const onMenuPointerEnter = (event) => {
+    lastPointer = { x: event.clientX, y: event.clientY };
+    isPointerInsideMenu = true;
+    clearHoverCloseTimer();
+  };
+
+  const onMenuPointerLeave = (event) => {
+    lastPointer = { x: event.clientX, y: event.clientY };
+    isPointerInsideMenu = false;
+    scheduleHoverClose();
+  };
+
   const onOutsideClick = (event) => {
+    lastPointer = { x: event.clientX, y: event.clientY };
+
     if (panel.contains(event.target) || anchor.contains(event.target)) {
+      syncHoverClose();
       return;
     }
 
     closeActivePanel("dismiss");
   };
 
-  const onWindowDismiss = () => {
-    closeActivePanel("reposition");
-  };
-
   const close = (reason = "programmatic") => {
+    clearHoverCloseTimer();
     document.removeEventListener("click", onOutsideClick, true);
-    window.removeEventListener("scroll", onWindowDismiss, true);
-    window.removeEventListener("resize", onWindowDismiss, true);
+    document.removeEventListener("pointermove", onPointerMove, true);
+    panel.removeEventListener("pointerenter", onMenuPointerEnter);
+    panel.removeEventListener("pointerleave", onMenuPointerLeave);
+    anchor.removeEventListener("pointerenter", onMenuPointerEnter);
+    anchor.removeEventListener("pointerleave", onMenuPointerLeave);
     panel.remove();
 
     if (onClose) {
@@ -605,8 +669,11 @@ function bindPanelCloseHandlers(panel, anchor, onClose) {
     document.addEventListener("click", onOutsideClick, true);
   }, 0);
 
-  window.addEventListener("scroll", onWindowDismiss, true);
-  window.addEventListener("resize", onWindowDismiss, true);
+  document.addEventListener("pointermove", onPointerMove, true);
+  panel.addEventListener("pointerenter", onMenuPointerEnter);
+  panel.addEventListener("pointerleave", onMenuPointerLeave);
+  anchor.addEventListener("pointerenter", onMenuPointerEnter);
+  anchor.addEventListener("pointerleave", onMenuPointerLeave);
 
   return close;
 }
