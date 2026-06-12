@@ -127,6 +127,8 @@ function scheduleScan() {
     if (isPlaylistPage()) {
       injectPlaylistRemoveButtons();
     }
+
+    injectGuidePlaylistsEntry();
   });
 }
 
@@ -136,6 +138,82 @@ function isQuickAddPage() {
 
 function isPlaylistPage() {
   return location.pathname === "/playlist";
+}
+
+function injectGuidePlaylistsEntry() {
+  const guideItems = document.querySelector("ytd-guide-renderer #sections ytd-guide-section-renderer #items");
+  if (!guideItems || guideItems.querySelector("[data-ytqf-guide-playlists='1']")) {
+    return;
+  }
+
+  const shortsEntry = [...guideItems.querySelectorAll("ytd-guide-entry-renderer")].find(
+    (entry) => entry.querySelector(".title")?.textContent.trim() === "Shorts"
+  );
+
+  if (!shortsEntry) {
+    return;
+  }
+
+  const entry = document.createElement("div");
+  entry.dataset.ytqfGuidePlaylists = "1";
+  entry.className = "ytqf-guide-playlists-entry";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "ytqf-guide-playlists-button";
+  button.setAttribute("aria-label", "Playlists");
+  button.title = "Playlists";
+
+  const icon = document.createElement("span");
+  icon.className = "ytqf-guide-playlists-icon";
+  icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true"><path d="M16 15.395a.5.5 0 01.762-.426L22.5 18.5l-5.738 3.531a.5.5 0 01-.762-.425v-6.212ZM14 19H4a1 1 0 110-2h10v2Zm6-8a1 1 0 110 2H4a1 1 0 110-2h16Zm0-6a1 1 0 110 2H4a1 1 0 010-2h16Z"></path></svg>`;
+
+  const label = document.createElement("span");
+  label.className = "ytqf-guide-playlists-label";
+  label.textContent = "Playlists";
+
+  button.append(icon, label);
+  entry.appendChild(button);
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openGuidePlaylistsPanel(entry);
+  });
+
+  shortsEntry.after(entry);
+}
+
+function openGuidePlaylistsPanel(anchor) {
+  closeActivePanel("replaced");
+
+  const panel = buildPanel("Open playlist");
+  const playlists = sortedPlaylists();
+
+  if (playlists.length === 0) {
+    appendEmptyPanelState(panel);
+  } else {
+    playlists.forEach((playlist) => {
+      panel.appendChild(
+        createPlaylistItem(playlist, {
+          isDefault: playlist.pinned,
+          onSelect: () => {
+            closeActivePanel("selected");
+            navigateToPlaylist(playlist.id);
+          },
+        })
+      );
+    });
+  }
+
+  document.body.appendChild(panel);
+  positionPanel(panel, anchor);
+  activePanelClose = bindPanelCloseHandlers(panel, anchor);
+}
+
+function navigateToPlaylist(playlistId) {
+  const href = `/playlist?list=${encodeURIComponent(playlistId)}`;
+  window.location.href = href;
 }
 
 function injectQuickAddButtons() {
@@ -505,13 +583,13 @@ function openPlaylistPanel(anchor, videoId) {
   });
 }
 
-function buildPanel() {
+function buildPanel(titleText = "Add to playlist") {
   const panel = document.createElement("div");
   panel.className = "ytqf-panel";
 
   const title = document.createElement("div");
   title.className = "ytqf-panel-title";
-  title.textContent = "Add to playlist";
+  title.textContent = titleText;
   panel.appendChild(title);
 
   return panel;

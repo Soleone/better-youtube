@@ -170,3 +170,51 @@ ytd-compact-video-renderer #details .ytqf-container--inline-right {
   cursor: pointer;
 }
 
+.ytqf-guide-playlists-entry {
+  display: block;
+}
+
+.ytqf-guide-playlists-button {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--yt-spec-text-primary, #f1f1f1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 1.4rem;
+  line-height: 2rem;
+  font-weight: 400;
+  text-align: left;
+}
+
+.ytqf-guide-playlists-button:hover {
+  background: var(--yt-spec-badge-chip-background, rgba(255, 255, 255, 0.1));
+}
+
+.ytqf-guide-playlists-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: var(--yt-spec-icon-active-other, #f1f1f1);
+  fill: currentColor;
+  display: inline-flex;
+}
+
+.ytqf-guide-playlists-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.ytqf-guide-playlists-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
