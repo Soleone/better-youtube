@@ -518,6 +518,10 @@ function openPlaylistPanel(anchor, videoId) {
     isSubmitting = true;
     disablePanelButtons(panel);
 
+    if (closePanel) {
+      closeActivePanel("selected");
+    }
+
     setTriggerState(anchor, {
       label: TRIGGER_LABELS.adding,
       disabled: true,
@@ -548,10 +552,6 @@ function openPlaylistPanel(anchor, videoId) {
       scheduleTriggerState(anchor, TRIGGER_RESET_MS.failed, { label: DEFAULT_TRIGGER_LABEL });
     } finally {
       isSubmitting = false;
-
-      if (closePanel) {
-        closeActivePanel("selected");
-      }
     }
   };
 
