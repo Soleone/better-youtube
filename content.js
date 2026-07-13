@@ -236,8 +236,7 @@ function injectQuickAddButtons() {
       return;
     }
 
-    const videoId = getVideoId(card);
-    if (!videoId) {
+    if (!getVideoId(card)) {
       return;
     }
 
@@ -246,7 +245,7 @@ function injectQuickAddButtons() {
       return;
     }
 
-    injectQuickAddTrigger(card, placement, videoId);
+    injectQuickAddTrigger(card, placement);
   });
 }
 
@@ -289,7 +288,7 @@ function findInlineHost(card) {
   );
 }
 
-function injectQuickAddTrigger(card, placement, videoId) {
+function injectQuickAddTrigger(card, placement) {
   const container = document.createElement("div");
   container.className = "ytqf-container";
 
@@ -305,14 +304,14 @@ function injectQuickAddTrigger(card, placement, videoId) {
     placement.reserveHost?.classList.add("ytqf-inline-host");
   }
 
-  const trigger = createQuickAddTrigger(videoId);
+  const trigger = createQuickAddTrigger(card);
   container.appendChild(trigger);
   placement.host.appendChild(container);
 
   card.dataset.ytqfInjected = "1";
 }
 
-function createQuickAddTrigger(videoId) {
+function createQuickAddTrigger(card) {
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "ytqf-trigger";
@@ -325,6 +324,14 @@ function createQuickAddTrigger(videoId) {
     const undoAction = undoActionsByTrigger.get(trigger);
     if (undoAction) {
       runUndoAction(trigger, undoAction);
+      return;
+    }
+
+    const videoId = getVideoId(card);
+    if (!videoId) {
+      console.error("[YTQF] could not resolve the current video for this card");
+      setTriggerState(trigger, { label: TRIGGER_LABELS.failed, variant: "error" });
+      scheduleTriggerState(trigger, TRIGGER_RESET_MS.failed, { label: DEFAULT_TRIGGER_LABEL });
       return;
     }
 
@@ -345,8 +352,7 @@ function injectPlaylistRemoveButtons() {
       return;
     }
 
-    const videoId = getVideoId(row);
-    if (!videoId) {
+    if (!getVideoId(row)) {
       return;
     }
 
@@ -370,7 +376,19 @@ function injectPlaylistRemoveButtons() {
         return;
       }
 
-      removeFromPlaylistRow(trigger, videoId, playlistId);
+      const currentVideoId = getVideoId(row);
+      const currentPlaylistId = getCurrentPlaylistId();
+      if (!currentVideoId || !currentPlaylistId) {
+        console.error("[YTQF] could not resolve the current playlist row");
+        setTriggerState(trigger, { label: TRIGGER_LABELS.failed, variant: "error" });
+        scheduleTriggerState(trigger, TRIGGER_RESET_MS.failed, {
+          label: TRIGGER_LABELS.remove,
+          variant: "remove",
+        });
+        return;
+      }
+
+      removeFromPlaylistRow(trigger, currentVideoId, currentPlaylistId);
     });
 
     const container = document.createElement("div");
