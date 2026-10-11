@@ -41,6 +41,11 @@ ytd-compact-video-renderer #details .ytqf-container--inline-right {
   z-index: 2;
 }
 
+.ytqf-watch-container {
+  margin-top: 0;
+  margin-right: 8px;
+}
+
 .ytqf-playlist-remove-container {
   margin-top: 0;
   margin-right: 8px;

@@ -3,7 +3,7 @@
 Add any YouTube video to your favorite playlists in one click, straight from Home or Subscriptions, and undo it right away if you change your mind.
 
 The buttons appear on:
-- **Quick add** on Home (`/`) and Subscriptions (`/feed/subscriptions`)
+- **Quick add** on Home (`/`), Subscriptions (`/feed/subscriptions`), channel pages (`/@handle/videos`) and the watch page sidebar
 - **Remove** on playlist pages (`/playlist?list=...`) for each video row
 
 <img src="docs/media/quick-add.webp" alt="Quick add opens the playlist list, a video is added, and Undo puts it back. Then the sidebar's Playlists entry jumps to a favorite playlist" width="640" />

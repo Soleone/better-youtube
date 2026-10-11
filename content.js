@@ -124,6 +124,10 @@ function scheduleScan() {
       injectQuickAddButtons();
     }
 
+    if (isWatchPage()) {
+      injectWatchPageButton();
+    }
+
     if (isPlaylistPage()) {
       injectPlaylistRemoveButtons();
     }
@@ -133,7 +137,15 @@ function scheduleScan() {
 }
 
 function isQuickAddPage() {
-  return ["/", "/feed/subscriptions", "/watch"].includes(location.pathname);
+  return ["/", "/feed/subscriptions", "/watch"].includes(location.pathname) || isChannelPage();
+}
+
+function isWatchPage() {
+  return location.pathname === "/watch";
+}
+
+function isChannelPage() {
+  return /^\/(@|channel\/|c\/|user\/)/.test(location.pathname);
 }
 
 function isPlaylistPage() {
@@ -249,6 +261,24 @@ function injectQuickAddButtons() {
   });
 }
 
+function injectWatchPageButton() {
+  const host =
+    document.querySelector("ytd-watch-metadata #actions #top-level-buttons-computed") ||
+    document.querySelector("ytd-watch-metadata #actions-inner #menu") ||
+    document.querySelector("ytd-watch-metadata #actions");
+
+  if (!host || host.querySelector(".ytqf-watch-container")) {
+    return;
+  }
+
+  const container = document.createElement("div");
+  container.className = "ytqf-container ytqf-watch-container";
+
+  const trigger = createQuickAddTrigger(null);
+  container.appendChild(trigger);
+  host.prepend(container);
+}
+
 function resolveCardRoot(candidate) {
   if (candidate.matches("ytd-rich-item-renderer")) {
     return candidate.querySelector("ytd-rich-grid-media") || candidate;
@@ -327,7 +357,7 @@ function createQuickAddTrigger(card) {
       return;
     }
 
-    const videoId = getVideoId(card);
+    const videoId = card ? getVideoId(card) : getWatchVideoId();
     if (!videoId) {
       console.error("[YTQF] could not resolve the current video for this card");
       setTriggerState(trigger, { label: TRIGGER_LABELS.failed, variant: "error" });
@@ -485,6 +515,10 @@ async function runUndoAction(trigger, action) {
       clearUndo: false,
     });
   }
+}
+
+function getWatchVideoId() {
+  return new URLSearchParams(location.search).get("v");
 }
 
 function getVideoId(scope) {
