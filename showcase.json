@@ -4,6 +4,7 @@
   "pitch": "Add any YouTube video to your favorite playlists in one click, straight from Home or Subscriptions.",
   "description": "Every add turns into an Undo button, a Playlists entry in the sidebar jumps to your favorites, and playlist pages get a Remove button. A bundled demo runs without a YouTube account.",
   "kind": "browser-extension",
+  "stage": "product",
   "year": 2026,
   "repo": "https://github.com/Soleone/better-youtube",
   "media": {
