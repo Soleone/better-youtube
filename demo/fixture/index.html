@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YouTube</title>
+  <style>
+    body { margin: 0; font-family: Roboto, Arial, sans-serif; background: #0f0f0f; color: #f1f1f1; }
+    #masthead { height: 56px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #272727; }
+    #masthead .logo { font-weight: 700; font-size: 20px; letter-spacing: -0.5px; }
+    .page { display: flex; }
+    ytd-guide-renderer { width: 240px; padding: 12px 0; flex: none; }
+    ytd-guide-entry-renderer { display: block; padding: 10px 24px; font-size: 14px; }
+    ytd-guide-section-renderer + ytd-guide-section-renderer { margin-top: 12px; }
+    main { flex: 1; padding: 24px; }
+    ytd-rich-grid-renderer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 16px; }
+    ytd-rich-item-renderer { display: block; position: relative; }
+    ytd-rich-grid-media { display: block; position: relative; }
+    #dismissible { position: relative; }
+    #dismissible a#thumbnail { display: block; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; }
+    #dismissible .thumb { width: 100%; height: 100%; }
+    #details { padding-top: 12px; }
+    #video-title { font-size: 16px; font-weight: 500; line-height: 22px; margin: 0; }
+    #video-title-link { color: #f1f1f1; text-decoration: none; }
+    #meta { font-size: 13px; color: #aaa; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <!-- Synthetic stand-in for youtube.com's home page. Titles, channels and thumbnails are invented. -->
+  <ytd-app>
+    <header id="masthead"><span class="logo">YouTube</span></header>
+    <div class="page">
+      <ytd-guide-renderer>
+        <div id="sections">
+          <ytd-guide-section-renderer>
+            <div id="items">
+              <ytd-guide-entry-renderer><a href="/"><span class="title">Home</span></a></ytd-guide-entry-renderer>
+              <ytd-guide-entry-renderer><a href="/shorts"><span class="title">Shorts</span></a></ytd-guide-entry-renderer>
+              <ytd-guide-entry-renderer><a href="/feed/subscriptions"><span class="title">Subscriptions</span></a></ytd-guide-entry-renderer>
+            </div>
+          </ytd-guide-section-renderer>
+        </div>
+      </ytd-guide-renderer>
+      <main>
+        <ytd-rich-grid-renderer id="contents"></ytd-rich-grid-renderer>
+      </main>
+    </div>
+  </ytd-app>
+
+  <script>
+    // The bridge reads ytcfg and the SAPISID cookie, then posts to YouTube's internal playlist endpoint.
+    // Here the endpoint is answered locally, so nothing leaves the demo and no account is needed.
+    window.ytcfg = {
+      get(key) {
+        return {
+          INNERTUBE_API_KEY: "demo-key",
+          INNERTUBE_CONTEXT: { client: { clientName: "WEB", clientVersion: "2.20261001.00.00", hl: "en", gl: "US" } },
+          INNERTUBE_CONTEXT_CLIENT_NAME: 1,
+          INNERTUBE_CONTEXT_CLIENT_VERSION: "2.20261001.00.00",
+          SESSION_INDEX: 0,
+          VISITOR_DATA: "demo-visitor",
+          DELEGATED_SESSION_ID: "",
+        }[key];
+      },
+    };
+    document.cookie = "SAPISID=demo-sapisid; path=/";
+
+    const nativeFetch = window.fetch.bind(window);
+    window.__demoPlaylistEdits = [];
+    window.fetch = async (input, init) => {
+      if (String(input).includes("/youtubei/v1/browse/edit_playlist")) {
+        const body = JSON.parse(init.body);
+        window.__demoPlaylistEdits.push({ playlistId: body.playlistId, actions: body.actions });
+        return new Response(
+          JSON.stringify({ status: "STATUS_SUCCEEDED", playlistEditResults: [{ playlistEditVideoAddedResultData: {} }] }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+      return nativeFetch(input, init);
+    };
+
+    const videos = [
+      ["bridge-files-explained", "Why a tiny bridge file exists", "Harbor Tinkering", "42K views", "3 days ago", "#2f4858", "#86bbd8"],
+      ["sourdough-in-a-cold-kitchen", "Sourdough in a cold kitchen", "Mari Bakes Slowly", "118K views", "1 week ago", "#7b4b2a", "#e0a96d"],
+      ["lathe-first-project", "First project on a secondhand lathe", "Shop Floor Notes", "9.3K views", "5 hours ago", "#3d5a40", "#a3b18a"],
+      ["night-train-timelapse", "Night train timelapse, 4 hours in 6 minutes", "Slow Rail Films", "1.2M views", "2 years ago", "#22223b", "#9a8c98"],
+      ["vim-macros-you-will-use", "Three Vim macros you will actually use", "Terminal Hobbies", "260K views", "4 months ago", "#1b263b", "#778da9"],
+      ["mini-greenhouse-build", "Building a mini greenhouse from pallets", "Yard Projects", "51K views", "2 weeks ago", "#44633f", "#cfe1b9"],
+      ["c-small-compiler-part-1", "Writing a small C compiler, part 1", "Byte Sized Lab", "77K views", "6 months ago", "#4a1942", "#c08497"],
+      ["tide-pool-macro", "Tide pool life, macro lens", "Coastline Field Guide", "13K views", "11 hours ago", "#284b63", "#8ecae6"],
+      ["ceramic-glaze-tests", "Twelve glaze tests on one kiln load", "Clay Logbook", "88K views", "9 days ago", "#5c3c10", "#f4a261"],
+      ["bike-frame-repair", "Fixing a cracked bike frame with epoxy", "Spoke and Wrench", "24K views", "3 weeks ago", "#333d29", "#b5b682"],
+      ["map-projections-visual", "Map projections, drawn by hand", "Plotted Lines", "310K views", "1 year ago", "#2b2d42", "#edf2f4"],
+      ["sketchbook-walkthrough", "A full sketchbook walkthrough, page by page", "Pencil Weather", "5.6K views", "2 days ago", "#6d597a", "#e56b6f"],
+    ];
+
+    const grid = document.getElementById("contents");
+    for (const [id, title, channel, views, age, from, to] of videos) {
+      const item = document.createElement("ytd-rich-item-renderer");
+      item.innerHTML = `
+        <ytd-rich-grid-media>
+          <div id="dismissible">
+            <a id="thumbnail" href="/watch?v=${id}"><div class="thumb" style="background: linear-gradient(135deg, ${from}, ${to})"></div></a>
+            <div id="details">
+              <a id="video-title-link" href="/watch?v=${id}"><h3 id="video-title"></h3></a>
+              <div id="meta"><ytd-channel-name></ytd-channel-name> · ${views} · ${age}</div>
+            </div>
+          </div>
+        </ytd-rich-grid-media>`;
+      item.querySelector("#video-title").textContent = title;
+      item.querySelector("ytd-channel-name").textContent = channel;
+      grid.appendChild(item);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Soleone/showcase/main/schema/showcase.schema.json",
+  "title": "Better Youtube",
+  "pitch": "Add any YouTube video to your favorite playlists in one click, straight from Home or Subscriptions, and undo it right away if you change your mind.",
+  "kind": "browser-extension",
+  "year": 2026,
+  "repo": "https://github.com/Soleone/better-youtube",
+  "media": {
+    "hero": "https://github.com/user-attachments/assets/6afbf21d-2828-4909-a091-38e76f31d957",
+    "motion": "docs/media/quick-add.webp",
+    "capture": "npm run media:capture"
+  },
+  "demo": {
+    "local": "npm run demo",
+    "externals": [
+      {
+        "name": "YouTube home page",
+        "type": "service",
+        "seam": "--host-resolver-rules points www.youtube.com at the demo server",
+        "standIn": "simulated",
+        "note": "A synthetic copy of the home page layout with invented videos. It is not YouTube."
+      },
+      {
+        "name": "YouTube playlist API",
+        "type": "service",
+        "seam": "window.fetch on the page: the bridge posts to /youtubei/v1/browse/edit_playlist, which the demo page answers itself",
+        "standIn": "canned",
+        "note": "Playlist changes are answered locally and never reach YouTube."
+      },
+      {
+        "name": "Signed-in YouTube account",
+        "type": "account",
+        "seam": "the SAPISID cookie and ytcfg the page provides to the bridge",
+        "standIn": "simulated",
+        "note": "The demo sets a fake login cookie. No account is used."
+      }
+    ]
+  }
+}
