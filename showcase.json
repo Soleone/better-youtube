@@ -35,5 +35,6 @@
         "note": "The demo sets a fake login cookie. No account is used."
       }
     ]
-  }
+  },
+  "ceiling": "A"
 }
