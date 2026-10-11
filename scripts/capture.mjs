@@ -3,6 +3,7 @@
 // uses the sidebar's Playlists entry to jump to a favorite playlist. The clip ends on that playlist page, and the loop
 // cuts back to Home. The hero is a screenshot of the open Playlists panel.
 // Usage: npm run media:capture. Needs agent-browser (with its browser installed) and FFmpeg on the PATH.
+import { readFile } from "node:fs/promises";
 import { record } from "@soleone/showcase/capture";
 import { browserArgs, extensionId, repoRoot, samplePlaylists, seedExpression } from "../demo/seed.mjs";
 import { startServer } from "../demo/serve.mjs";
@@ -57,14 +58,35 @@ const take = () => record({
   },
 });
 
+// Reads the frame count and total length from the WebP's own container, so a short encode is caught before it is kept.
+function webpTiming(buffer) {
+  let frames = 0;
+  let durationMs = 0;
+  for (let offset = 12; offset + 8 <= buffer.length;) {
+    const type = buffer.toString("ascii", offset, offset + 4);
+    const size = buffer.readUInt32LE(offset + 4);
+    if (type === "ANMF") {
+      frames += 1;
+      durationMs += buffer.readUIntLE(offset + 8 + 12, 3);
+    }
+    offset += 8 + size + (size % 2);
+  }
+  return { frames, durationMs };
+}
+
 // The stream sometimes sends almost nothing during a take, and the recorder keeps such a take as a frozen clip.
-// Retry here when it sent fewer than six frames, and when the recorder throws (it does not retry those itself).
+// The encoder once wrote a 13 s take as a 5 s loop. Retry here when the take or the file is too short, and when the
+// recorder throws (it does not retry those itself).
 try {
   let result;
   for (let run = 1; !result; run += 1) {
     try {
       const attemptResult = await take();
       if (attemptResult.frames < 6) throw new Error(`The take has only ${attemptResult.frames} stream frames`);
+      const timing = webpTiming(await readFile("docs/media/quick-add.webp"));
+      if (timing.frames < 6 || Math.abs(timing.durationMs - attemptResult.durationMs) > 500) {
+        throw new Error(`The loop has ${timing.frames} frames and ${timing.durationMs} ms, not the ${attemptResult.durationMs} ms take`);
+      }
       result = attemptResult;
     } catch (error) {
       if (run >= 3) throw error;
