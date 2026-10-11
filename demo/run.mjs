@@ -104,5 +104,5 @@ const { targetId } = await cdp.send("Target.createTarget", { url: "https://www.y
 await cdp.send("Target.activateTarget", { targetId });
 cdp.close();
 
-console.log("Better Youtube demo running on a synthetic YouTube page. Quick add the sample playlists; no account needed.");
+console.log("Better Youtube demo running on a synthetic YouTube page. Quick add a video, or open Playlists in the sidebar; no account needed.");
 console.log("Press Ctrl-C or close the window to stop.");

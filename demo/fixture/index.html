@@ -11,6 +11,7 @@
     .page { display: flex; }
     ytd-guide-renderer { width: 240px; padding: 12px 0; flex: none; }
     ytd-guide-entry-renderer { display: block; padding: 10px 24px; font-size: 14px; }
+    ytd-guide-entry-renderer a { color: #f1f1f1; text-decoration: none; }
     ytd-guide-section-renderer + ytd-guide-section-renderer { margin-top: 12px; }
     main { flex: 1; padding: 24px; }
     ytd-rich-grid-renderer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 16px; }
@@ -23,10 +24,19 @@
     #video-title { font-size: 16px; font-weight: 500; line-height: 22px; margin: 0; }
     #video-title-link { color: #f1f1f1; text-decoration: none; }
     #meta { font-size: 13px; color: #aaa; margin-top: 4px; }
+    #playlist-header h1 { font-size: 24px; margin: 0 0 4px; }
+    #playlist-header p { font-size: 13px; color: #aaa; margin: 0 0 20px; }
+    ytd-playlist-video-renderer { display: flex; align-items: center; gap: 16px; padding: 8px 0; max-width: 720px; }
+    ytd-playlist-video-renderer .thumb-link { flex: none; width: 168px; height: 94px; border-radius: 8px; overflow: hidden; display: block; }
+    ytd-playlist-video-renderer .thumb { width: 100%; height: 100%; }
+    ytd-playlist-video-renderer .info { flex: 1; min-width: 0; }
+    ytd-playlist-video-renderer h3 { font-size: 15px; font-weight: 500; margin: 0 0 4px; }
+    ytd-playlist-video-renderer .channel { font-size: 13px; color: #aaa; }
+    ytd-playlist-video-renderer #menu { flex: none; }
   </style>
 </head>
 <body>
-  <!-- Synthetic stand-in for youtube.com's home page. Titles, channels and thumbnails are invented. -->
+  <!-- Synthetic stand-in for youtube.com's home and playlist pages. Titles, channels and thumbnails are invented. -->
   <ytd-app>
     <header id="masthead"><span class="logo">YouTube</span></header>
     <div class="page">
@@ -41,9 +51,7 @@
           </ytd-guide-section-renderer>
         </div>
       </ytd-guide-renderer>
-      <main>
-        <ytd-rich-grid-renderer id="contents"></ytd-rich-grid-renderer>
-      </main>
+      <main id="main"></main>
     </div>
   </ytd-app>
 
@@ -94,22 +102,63 @@
       ["sketchbook-walkthrough", "A full sketchbook walkthrough, page by page", "Pencil Weather", "5.6K views", "2 days ago", "#6d597a", "#e56b6f"],
     ];
 
-    const grid = document.getElementById("contents");
-    for (const [id, title, channel, views, age, from, to] of videos) {
-      const item = document.createElement("ytd-rich-item-renderer");
-      item.innerHTML = `
-        <ytd-rich-grid-media>
-          <div id="dismissible">
-            <a id="thumbnail" href="/watch?v=${id}"><div class="thumb" style="background: linear-gradient(135deg, ${from}, ${to})"></div></a>
-            <div id="details">
-              <a id="video-title-link" href="/watch?v=${id}"><h3 id="video-title"></h3></a>
-              <div id="meta"><ytd-channel-name></ytd-channel-name> · ${views} · ${age}</div>
+    // The sample playlists from demo/seed.mjs, with the videos each one shows. Unknown IDs get an empty page.
+    const playlists = {
+      PLdemoWatchLater0000000000000001: { title: "Watch later", videoIds: ["night-train-timelapse", "map-projections-visual", "tide-pool-macro"] },
+      PLdemoWoodworking00000000000002: { title: "Woodworking", videoIds: ["lathe-first-project", "bike-frame-repair", "mini-greenhouse-build"] },
+      PLdemoBakingNotes000000000000003: { title: "Baking notes", videoIds: ["sourdough-in-a-cold-kitchen", "ceramic-glaze-tests"] },
+    };
+
+    const main = document.getElementById("main");
+    const byId = Object.fromEntries(videos.map((video) => [video[0], video]));
+
+    function renderHome() {
+      main.innerHTML = `<ytd-rich-grid-renderer id="contents"></ytd-rich-grid-renderer>`;
+      const grid = document.getElementById("contents");
+      for (const [id, title, channel, views, age, from, to] of videos) {
+        const item = document.createElement("ytd-rich-item-renderer");
+        item.innerHTML = `
+          <ytd-rich-grid-media>
+            <div id="dismissible">
+              <a id="thumbnail" href="/watch?v=${id}"><div class="thumb" style="background: linear-gradient(135deg, ${from}, ${to})"></div></a>
+              <div id="details">
+                <a id="video-title-link" href="/watch?v=${id}"><h3 id="video-title"></h3></a>
+                <div id="meta"><ytd-channel-name></ytd-channel-name> · ${views} · ${age}</div>
+              </div>
             </div>
-          </div>
-        </ytd-rich-grid-media>`;
-      item.querySelector("#video-title").textContent = title;
-      item.querySelector("ytd-channel-name").textContent = channel;
-      grid.appendChild(item);
+          </ytd-rich-grid-media>`;
+        item.querySelector("#video-title").textContent = title;
+        item.querySelector("ytd-channel-name").textContent = channel;
+        grid.appendChild(item);
+      }
+    }
+
+    // Playlist pages are reached from the sidebar's Playlists panel, which navigates to /playlist?list=ID.
+    function renderPlaylist() {
+      const listId = new URL(location.href).searchParams.get("list");
+      const playlist = playlists[listId] ?? { title: "Playlist", videoIds: [] };
+      main.innerHTML = `
+        <div id="playlist-header"><h1></h1><p>${playlist.videoIds.length} videos</p></div>
+        <div id="playlist-items"></div>`;
+      main.querySelector("h1").textContent = playlist.title;
+      const items = main.querySelector("#playlist-items");
+      for (const id of playlist.videoIds) {
+        const [, title, channel, , , from, to] = byId[id];
+        const row = document.createElement("ytd-playlist-video-renderer");
+        row.innerHTML = `
+          <a class="thumb-link" href="/watch?v=${id}"><div class="thumb" style="background: linear-gradient(135deg, ${from}, ${to})"></div></a>
+          <div class="info"><h3></h3><div class="channel"><ytd-channel-name></ytd-channel-name></div></div>
+          <div id="menu"></div>`;
+        row.querySelector("h3").textContent = title;
+        row.querySelector("ytd-channel-name").textContent = channel;
+        items.appendChild(row);
+      }
+    }
+
+    if (location.pathname === "/playlist") {
+      renderPlaylist();
+    } else {
+      renderHome();
     }
   </script>
 </body>

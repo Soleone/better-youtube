@@ -6,17 +6,17 @@ The buttons appear on:
 - **Quick add** on Home (`/`) and Subscriptions (`/feed/subscriptions`)
 - **Remove** on playlist pages (`/playlist?list=...`) for each video row
 
-<img width="560" height="418" alt="image" src="https://github.com/user-attachments/assets/6afbf21d-2828-4909-a091-38e76f31d957" />
-
-<img src="docs/media/quick-add.webp" alt="Quick add opens the playlist list, a video is added, and Undo puts it back" width="640" />
+<img src="docs/media/quick-add.webp" alt="Quick add opens the playlist list, a video is added, and Undo puts it back. Then the sidebar's Playlists entry jumps to a favorite playlist" width="640" />
 
 Clicking Quick add opens your configured favorite playlists in your manual order from options. Clicking a playlist immediately adds that video to the real YouTube playlist, then the button turns into **Undo** (until reload) so you can revert quickly.
+
+The sidebar also gets a **Playlists** entry under Shorts. It opens the same favorites, and one click goes straight to that playlist's page.
 
 On playlist pages, each row gets a **Remove** button. Remove is immediate, then turns into **Undo** (until reload) to restore the video to that playlist.
 
 ## Try the demo
 
-`npm run demo` opens Chromium with the extension loaded, a synthetic YouTube home page and three sample playlists. No YouTube account is needed, and nothing reaches YouTube. It needs a Chromium build that still accepts `--load-extension`, since Google Chrome stable no longer does. Set `CHROME_BIN` to pick one.
+`npm run demo` opens Chromium with the extension loaded, a synthetic YouTube home page and three sample playlists. Try Quick add on a video, then open **Playlists** in the sidebar and pick one. No YouTube account is needed, and nothing reaches YouTube. It needs a Chromium build that still accepts `--load-extension`, since Google Chrome stable no longer does. Set `CHROME_BIN` to pick one.
 
 ## Install (unpacked)
 

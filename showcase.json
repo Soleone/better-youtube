@@ -6,7 +6,7 @@
   "year": 2026,
   "repo": "https://github.com/Soleone/better-youtube",
   "media": {
-    "hero": "https://github.com/user-attachments/assets/6afbf21d-2828-4909-a091-38e76f31d957",
+    "hero": "docs/media/hero.png",
     "motion": "docs/media/quick-add.webp",
     "capture": "npm run media:capture"
   },

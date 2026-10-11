@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Records the Quick add loop for the README: add a video to a playlist, undo it, and end where the clip began.
+// Records the README loop and the showcase hero still. The loop adds a video to a playlist from Home, undoes it, then
+// uses the sidebar's Playlists entry to jump to a favorite playlist. The clip ends on that playlist page, and the loop
+// cuts back to Home. The hero is a screenshot of the open Playlists panel.
 // Usage: npm run media:capture. Needs agent-browser (with its browser installed) and FFmpeg on the PATH.
 import { record } from "@soleone/showcase/capture";
 import { browserArgs, extensionId, repoRoot, samplePlaylists, seedExpression } from "../demo/seed.mjs";
@@ -32,14 +34,26 @@ const take = () => record({
     await page.sleep(600);
     await page.click(woodworking.title);
     await page.waitFor(`[...document.querySelectorAll(".ytqf-trigger")].some((trigger) => trigger.textContent.trim() === "Undo")`);
-    await page.sleep(2200);
+    await page.sleep(2000);
     await page.click("Undo");
     await page.waitFor(`document.querySelector(".ytqf-trigger").textContent.trim() === "Quick add"`, { timeoutMs: 15_000 });
-    await page.sleep(1500);
+    // Checked here, before the jump: navigating to the playlist page starts a fresh page and clears the demo's record.
+    const edits = await page.eval(`window.__demoPlaylistEdits.map((edit) => edit.playlistId)`);
+    if (!edits.includes(woodworking.id)) throw new Error("the add never reached the playlist endpoint");
+    await page.sleep(1000);
+
+    await page.click("Playlists");
+    await page.waitFor(`document.querySelector(".ytqf-panel") !== null`);
+    await page.sleep(800);
+    await page.run("screenshot", "docs/media/hero.png");
+    await page.sleep(500);
+    await page.click(woodworking.title);
+    await page.waitFor(`document.querySelectorAll("ytd-playlist-video-renderer").length === 3`, { timeoutMs: 15_000 });
+    await page.sleep(2200);
   },
   async verify(page) {
-    const playlists = await page.eval(`window.__demoPlaylistEdits.map((edit) => edit.playlistId)`);
-    if (!playlists.includes(woodworking.id)) return "the add never reached the playlist endpoint";
+    const where = await page.eval("location.pathname + location.search");
+    if (!where.includes(woodworking.id)) return "the sidebar jump did not reach the playlist page";
   },
 });
 
@@ -59,6 +73,7 @@ try {
   }
   const { frames, durationMs, grid } = result;
   console.log(`Wrote docs/media/quick-add.webp (${frames} frames, ${(durationMs / 1000).toFixed(1)} s). Check the frames in ${grid}.`);
+  console.log("Wrote docs/media/hero.png.");
 } finally {
   await server.close();
 }
