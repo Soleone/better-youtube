@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Better Youtube",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Add videos from YouTube Home/Subscriptions to your favorite playlists in one click.",
   "permissions": ["storage"],
   "host_permissions": ["https://www.youtube.com/*"],
