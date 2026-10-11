@@ -1,7 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/Soleone/showcase/main/schema/showcase.schema.json",
   "title": "Better Youtube",
-  "pitch": "Add any YouTube video to your favorite playlists in one click, straight from Home or Subscriptions, and undo it right away if you change your mind.",
+  "pitch": "Add any YouTube video to your favorite playlists in one click, straight from Home or Subscriptions.",
+  "description": "Every add turns into an Undo button, a Playlists entry in the sidebar jumps to your favorites, and playlist pages get a Remove button. A bundled demo runs without a YouTube account.",
   "kind": "browser-extension",
   "year": 2026,
   "repo": "https://github.com/Soleone/better-youtube",
