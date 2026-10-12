@@ -13,7 +13,8 @@ const CARD_SELECTOR = [
   "ytd-video-renderer",
   "ytd-grid-video-renderer",
   "ytd-compact-video-renderer",
-  "yt-lockup-view-model.yt-lockup-view-model--wrapper",
+  "yt-lockup-view-model",
+  ".yt-lockup-view-model--wrapper",
 ].join(", ");
 
 const PLAYLIST_ROW_SELECTOR = "ytd-playlist-video-renderer";
@@ -279,6 +280,10 @@ function injectWatchPageButton() {
   host.prepend(container);
 }
 
+function isLockupCard(card) {
+  return card.matches("yt-lockup-view-model, .yt-lockup-view-model--wrapper");
+}
+
 function resolveCardRoot(candidate) {
   if (candidate.matches("ytd-rich-item-renderer")) {
     return candidate.querySelector("ytd-rich-grid-media") || candidate;
@@ -290,7 +295,7 @@ function resolveCardRoot(candidate) {
 function resolvePlacement(card) {
   const inlineHost = findInlineHost(card);
   if (inlineHost) {
-    const mode = card.matches("yt-lockup-view-model.yt-lockup-view-model--wrapper") ? "inline-static" : "inline";
+    const mode = isLockupCard(card) ? "inline-static" : "inline";
     return { mode, host: inlineHost };
   }
 
@@ -305,7 +310,7 @@ function findInlineHost(card) {
     return card.querySelector("#details") || null;
   }
 
-  if (card.matches("yt-lockup-view-model.yt-lockup-view-model--wrapper")) {
+  if (isLockupCard(card)) {
     return card.querySelector(".yt-lockup-metadata-view-model__text-container") || null;
   }
 
