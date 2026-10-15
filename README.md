@@ -2,6 +2,8 @@
 
 Add any YouTube video to your favorite playlists in one click, straight from Home or Subscriptions, and undo it right away if you change your mind.
 
+**[Try it in your browser](https://better-youtube.soleone.xyz)**: the extension's own scripts on a simulated feed with sample playlists, so no install, no account, and nothing reaches YouTube.
+
 The buttons appear on:
 - **Quick add** on Home (`/`), Subscriptions (`/feed/subscriptions`), channel pages (`/@handle/videos`) and the watch page sidebar
 - **Remove** on playlist pages (`/playlist?list=...`) for each video row
@@ -15,6 +17,8 @@ The sidebar also gets a **Playlists** entry under Shorts. It opens the same favo
 On playlist pages, each row gets a **Remove** button. Remove is immediate, then turns into **Undo** (until reload) to restore the video to that playlist.
 
 ## Try the demo
+
+`npm run demo:web` builds the hosted demo into `dist/web`: the same synthetic page with the extension's scripts inline and a stand-in for `chrome.storage`.
 
 `npm run demo` opens Chromium with the extension loaded, a synthetic YouTube home page and three sample playlists. Try Quick add on a video, then open **Playlists** in the sidebar and pick one. No YouTube account is needed, and nothing reaches YouTube. It needs a Chromium build that still accepts `--load-extension`, since Google Chrome stable no longer does. Set `CHROME_BIN` to pick one.
 

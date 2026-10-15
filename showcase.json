@@ -35,8 +35,15 @@
         "seam": "the SAPISID cookie and ytcfg the page provides to the bridge",
         "standIn": "simulated",
         "note": "The demo sets a fake login cookie. No account is used."
+      },
+      {
+        "name": "Chrome extension APIs",
+        "type": "service",
+        "seam": "window.chrome, defined on the hosted page before the extension scripts run (demo/web/build.mjs)",
+        "standIn": "simulated",
+        "note": "chrome.storage.sync is kept in localStorage, seeded with the sample playlists; openOptionsPage opens /options.html."
       }
     ]
   },
-  "ceiling": "A"
+  "live": "https://better-youtube.soleone.xyz"
 }

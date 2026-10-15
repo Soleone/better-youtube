@@ -5,7 +5,8 @@
   "description": "Add videos from YouTube Home/Subscriptions to your favorite playlists in one click.",
   "scripts": {
     "demo": "node demo/run.mjs",
-    "media:capture": "node scripts/capture.mjs"
+    "media:capture": "node scripts/capture.mjs",
+    "demo:web": "node demo/web/build.mjs"
   },
   "devDependencies": {
     "@soleone/showcase": "github:Soleone/showcase"
