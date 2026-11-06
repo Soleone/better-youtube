@@ -9,6 +9,6 @@
     "demo:web": "node demo/web/build.mjs"
   },
   "devDependencies": {
-    "@soleone/showcase": "github:Soleone/showcase"
+    "@soleone/showcase-capture": "^0.1.0"
   }
 }

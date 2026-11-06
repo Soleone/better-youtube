@@ -4,7 +4,7 @@
 // cuts back to Home. The hero is a screenshot of the open Playlists panel.
 // Usage: npm run media:capture. Needs agent-browser (with its browser installed) and FFmpeg on the PATH.
 import { readFile } from "node:fs/promises";
-import { record } from "@soleone/showcase/capture";
+import { record } from "@soleone/showcase-capture";
 import { browserArgs, extensionId, repoRoot, samplePlaylists, seedExpression } from "../demo/seed.mjs";
 import { startServer } from "../demo/serve.mjs";
 
